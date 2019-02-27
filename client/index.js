@@ -1,5 +1,9 @@
 require('dotenv').config()
 
+const API_ROUTE = process.env.API_ROUTE || '{your_api_route}'
+const API_KEY = process.env.API_KEY || '{your_api_key}'
+const LIMIT = process.env.LIMIT || 5000
+
 const axios = require('axios')
 
 const SerialPort = require('serialport')
@@ -15,16 +19,6 @@ let unfullfilled = ''
 const pattern = /[0-9A-F]{8}\s([0-9A-F]{2}\s){2}(00\s){6}[0-9A-F]{8}\s\d{3,6}\.\d{2,3}\s\d{3,6}\s[VA]\s\d{2} \d{1}\s[+-]\d{3,4}/i
 
 setTimeout(() => {
-	// setInterval(() => {
-	// 	console.log('scanning')
-	// 	if (cache.length >= 50) {
-	// 		const copy = cache
-	// 		cache = []
-	// 		const url = process.env.API_ROUTE + '/' + process.env.API_KEY + '/data'
-	// 		axios.post(url, {raws: copy})
-	// 	}
-	// }, 15 * 1000)
-
 	console.log('listening')
 	port.on('data', (data) => {
 		data = data.toString().replace(/\r/g, '').split('\n')
@@ -44,10 +38,10 @@ setTimeout(() => {
 			}
 		}
 
-		if (cache.length >= process.env.LIMIT) {
+		if (cache.length >= LIMIT) {
 			const copy = cache
 			cache = []
-			const url = process.env.API_ROUTE + '/' + process.env.API_KEY + '/data'
+			const url = API_ROUTE + '/' + API_KEY + '/data'
 			axios.post(url, {raws: copy})
 		}
 	})

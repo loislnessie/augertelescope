@@ -52,10 +52,10 @@ module.exports = function(iterations) {
 			})
 		})
 
-		sendCommand('TL 4 ' + startMeasurement)
+		sendCommand('TL 4 ' + START_THRESHOLD)
 
 		function startMeasurement() {
-			// console.log('Starting measurements')
+			console.log('Starting sync')
 			// console.log(cards)
 
 			enableCounter()
@@ -110,7 +110,14 @@ module.exports = function(iterations) {
 					console.log('\n')
 					i++
 					if (i < iterations) setTimeout(startMeasurement, 1000)
-					else return resolve(cards['ttyUSB0'].threshold)
+					else {
+						forEachCard((card) => {
+							card.connection.close(function(err) {
+								console.log('port closed', err)
+							})
+						})
+						return resolve(cards['ttyUSB0'].threshold)
+					}
 				}, 1000)
 				// startMeasurement()
 			}, MEASUREMENT_TIME)

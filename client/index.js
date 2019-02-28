@@ -11,44 +11,52 @@ const port = new SerialPort('/dev/ttyUSB0', {
 	baudRate : 115200
 })
 
-const startupRoutine = ['CE']
+const SYNC_ITERATIONS = 10
 
-let cache = []
-let unfullfilled = ''
+require('./sync')(SYNC_ITERATIONS).then((threshold) => {
+	const startupRoutine = ['TL 4 ' + threshold, 'CE']
 
-const pattern = /[0-9A-F]{8}\s([0-9A-F]{2}\s){2}(00\s){6}[0-9A-F]{8}\s\d{3,6}\.\d{2,3}\s\d{3,6}\s[VA]\s\d{2} \d{1}\s[+-]\d{3,4}/i
+	let cache = []
+	let unfullfilled = ''
 
-setTimeout(() => {
-	console.log('listening')
-	port.on('data', (data) => {
-		data = data.toString().replace(/\r/g, '').split('\n')
+	const pattern = /[0-9A-F]{8}\s([0-9A-F]{2}\s){2}(00\s){6}[0-9A-F]{8}\s\d{3,6}\.\d{2,3}\s\d{3,6}\s[VA]\s\d{2} \d{1}\s[+-]\d{3,4}/i
 
-		if (data[data.length - 1] === '') data.pop()
+	module.exports = function() {
+		return new Promise((resolve, reject) => {
+			setTimeout(() => {
+				console.log('listening')
+				port.on('data', (data) => {
+					data = data.toString().replace(/\r/g, '').split('\n')
 
-		for (let line of data) {
-			if (pattern.test(line)) {
-				cache.push(line)
-			} else {
-				unfullfilled += line
+					if (data[data.length - 1] === '') data.pop()
 
-				if (pattern.test(unfullfilled)) {
-					cache.push(unfullfilled)
-					unfullfilled = ''
-				}
+					for (let line of data) {
+						if (pattern.test(line)) {
+							cache.push(line)
+						} else {
+							unfullfilled += line
+
+							if (pattern.test(unfullfilled)) {
+								cache.push(unfullfilled)
+								unfullfilled = ''
+							}
+						}
+					}
+
+					if (cache.length >= LIMIT) {
+						const copy = cache
+						cache = []
+						const url = API_ROUTE + '/' + API_KEY + '/data'
+						axios.post(url, {raws: copy})
+					}
+				})
+			}, 1000)
+
+			for (let command of startupRoutine) {
+				port.write(command + '\r', (err) => {
+					if (err) console.error(err)
+				})
 			}
-		}
-
-		if (cache.length >= LIMIT) {
-			const copy = cache
-			cache = []
-			const url = API_ROUTE + '/' + API_KEY + '/data'
-			axios.post(url, {raws: copy})
-		}
-	})
-}, 1000)
-
-for (let command of startupRoutine) {
-	port.write(command + '\r', (err) => {
-		if (err) console.error(err)
-	})
-}
+		})
+	}
+})
